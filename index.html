@@ -184,10 +184,15 @@
       <div class="page-title">Próximos Eventos <span></span></div>
       <button class="btn btn-add" id="btn-novo" onclick="abrirModal()">+ Novo Evento</button>
     </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+      <button class="cal-nav" onclick="mudaMesEventos(-1)" style="flex-shrink: 0;">&#8249;</button>
+      <div id="eventos-mes-label" style="font-size: 0.88rem; font-weight: 600; letter-spacing: 1px; color: var(--text); min-width: 180px; text-align: center;">—</div>
+      <button class="cal-nav" onclick="mudaMesEventos(1)" style="flex-shrink: 0;">&#8250;</button>
+    </div>
     <div class="grid" id="grid-eventos"></div>
     <div class="empty" id="empty" style="display:none">
-      <div class="empty-title">Nenhum evento cadastrado</div>
-      <div class="empty-sub">Clique em "Novo Evento" para começar</div>
+      <div class="empty-title">Nenhum evento neste mês</div>
+      <div class="empty-sub">Navegue entre os meses ou crie um novo evento</div>
     </div>
   </div>
 
@@ -281,6 +286,8 @@ var uploading = false;
 var hoje      = new Date();
 var cAno      = hoje.getFullYear();
 var cMes      = hoje.getMonth();
+var eAno      = hoje.getFullYear();
+var eMes      = hoje.getMonth();
 
 var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var MABR  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -440,13 +447,25 @@ function trocarView(view, btn) {
   document.getElementById('view-' + view).classList.add('ativo');
   btn.classList.add('ativo');
   if (view === 'calendario') renderCal();
+  if (view === 'eventos') renderEventos();
+}
+
+// ── FILTRO MÊS EVENTOS ──
+function mudaMesEventos(d) {
+  eMes += d;
+  if (eMes < 0)  { eMes = 11; eAno--; }
+  if (eMes > 11) { eMes = 0;  eAno++; }
+  renderEventos();
 }
 
 // ── RENDER EVENTOS ──
 function renderEventos() {
+  document.getElementById('eventos-mes-label').textContent = MESES[eMes] + ' ' + eAno;
   var grid  = document.getElementById('grid-eventos');
   var empty = document.getElementById('empty');
-  var list  = eventos.slice().sort(function(a,b) { return (a.data||'').localeCompare(b.data||''); });
+  var pfx   = eAno + '-' + String(eMes+1).padStart(2,'0');
+  var list  = eventos.filter(function(e) { return e.data && e.data.startsWith(pfx); })
+                     .sort(function(a,b) { return (a.data||'').localeCompare(b.data||''); });
 
   if (!list.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
