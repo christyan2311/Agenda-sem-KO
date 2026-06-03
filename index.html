@@ -266,9 +266,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
-var API_KEY  = '$2a$10$4gR/ag/haZzK9a9LX6GNfe24njmah5EFYVpbt0eFi0No9AyqZ3yua';
-var BIN_ID   = '6a1f1f74da38895dfe7d1aee';
-var BIN_URL  = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
+var SB_URL  = 'https://vngscnahsuqakwmzsnbb.supabase.co';
+var SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuZ3NjbmFoc3VxYWt3bXpzbmJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzA5OTIsImV4cCI6MjA5NjA0Njk5Mn0.6fbixdBTO8MGYcb2DuekzLCIVN7k_eZXvAlEeoW_8XY';
+var SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
 var CLD_NAME   = 'dgzqo3yve';
 var CLD_PRESET = 'agenda_pipa';
@@ -287,6 +287,13 @@ var MABR  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function fmt(d) { if (!d) return ''; var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+function sbRow(ev) {
+  return { id: ev.id, nome: ev.nome, data: ev.data || '', hora: ev.hora || '', local: ev.local || '', descricao: ev.desc || '', flyer: ev.flyer || '' };
+}
+function fromRow(r) {
+  return { id: r.id, nome: r.nome, data: r.data, hora: r.hora, local: r.local, desc: r.descricao, flyer: r.flyer || null };
+}
 
 function toast(msg) {
   var t = document.getElementById('toast');
@@ -312,58 +319,54 @@ function setBusy(on, txt) {
 // ── CARREGAR ──
 function carregar() {
   setLoading(true);
-
-  // Timeout de segurança — libera a tela após 8s no matter what
-  var tid = setTimeout(function() {
-    setLoading(false);
-    toast('Sem resposta. Verifique sua conexão.');
-  }, 8000);
-
-  fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': API_KEY, 'X-Bin-Meta': 'false' } })
+  fetch(SB_URL + '/rest/v1/eventos?select=*&order=data.asc', { headers: SB_HEADERS })
     .then(function(r) {
-      clearTimeout(tid);
       setLoading(false);
       if (!r.ok) { toast('Erro ' + r.status + ' ao carregar.'); return null; }
       return r.json();
     })
     .then(function(data) {
       if (!data) return;
-      eventos = (data.record && Array.isArray(data.record.eventos)) ? data.record.eventos : [];
+      eventos = data.map(fromRow);
       renderEventos();
     })
     .catch(function() {
-      clearTimeout(tid);
       setLoading(false);
       toast('Erro de conexão. Recarregue a página.');
     });
 }
 
-// ── SALVAR NA NUVEM ──
-function salvarNuvem(cb) {
-  var tid = setTimeout(function() {
-    setBusy(false);
-    toast('Timeout. Tente novamente.');
-  }, 12000);
+// ── INSERIR / ATUALIZAR / EXCLUIR ──
+function inserirEvento(ev, cb) {
+  fetch(SB_URL + '/rest/v1/eventos', {
+    method: 'POST',
+    headers: SB_HEADERS,
+    body: JSON.stringify(sbRow(ev))
+  }).then(function(r) {
+    if (!r.ok) { setBusy(false); toast('Erro ao salvar.'); return; }
+    if (cb) cb();
+  }).catch(function() { setBusy(false); toast('Erro de conexão.'); });
+}
 
-  fetch(BIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
-    body: JSON.stringify({ eventos: eventos })
-  })
-    .then(function(r) {
-      clearTimeout(tid);
-      if (!r.ok) { setBusy(false); toast('Erro ' + r.status + ' ao salvar.'); return null; }
-      return r.json();
-    })
-    .then(function(data) {
-      if (!data) return;
-      if (cb) cb();
-    })
-    .catch(function() {
-      clearTimeout(tid);
-      setBusy(false);
-      toast('Erro ao salvar. Tente novamente.');
-    });
+function atualizarEvento(ev, cb) {
+  fetch(SB_URL + '/rest/v1/eventos?id=eq.' + encodeURIComponent(ev.id), {
+    method: 'PATCH',
+    headers: SB_HEADERS,
+    body: JSON.stringify(sbRow(ev))
+  }).then(function(r) {
+    if (!r.ok) { setBusy(false); toast('Erro ao atualizar.'); return; }
+    if (cb) cb();
+  }).catch(function() { setBusy(false); toast('Erro de conexão.'); });
+}
+
+function excluirEvento(id, cb) {
+  fetch(SB_URL + '/rest/v1/eventos?id=eq.' + encodeURIComponent(id), {
+    method: 'DELETE',
+    headers: SB_HEADERS
+  }).then(function(r) {
+    if (!r.ok) { setBusy(false); toast('Erro ao excluir.'); return; }
+    if (cb) cb();
+  }).catch(function() { setBusy(false); toast('Erro de conexão.'); });
 }
 
 // ── UPLOAD CLOUDINARY ──
@@ -523,28 +526,34 @@ function salvar() {
     flyer: flyerUrl || null
   };
 
-  if (editId) {
-    var i = eventos.findIndex(function(e) { return e.id === editId; });
-    if (i !== -1) eventos[i] = ev; else eventos.push(ev);
-  } else {
-    eventos.push(ev);
-  }
-
   var wasEdit = !!editId;
   setBusy(true);
-  salvarNuvem(function() {
-    setBusy(false);
-    toast(wasEdit ? 'Evento atualizado!' : 'Evento adicionado!');
-    renderEventos();
-    fechar();
-  });
+
+  if (wasEdit) {
+    var i = eventos.findIndex(function(e) { return e.id === editId; });
+    if (i !== -1) eventos[i] = ev; else eventos.push(ev);
+    atualizarEvento(ev, function() {
+      setBusy(false);
+      toast('Evento atualizado!');
+      renderEventos();
+      fechar();
+    });
+  } else {
+    eventos.push(ev);
+    inserirEvento(ev, function() {
+      setBusy(false);
+      toast('Evento adicionado!');
+      renderEventos();
+      fechar();
+    });
+  }
 }
 
 function excluir(id) {
   if (!confirm('Excluir este evento?')) return;
-  eventos = eventos.filter(function(e) { return e.id !== id; });
   setBusy(true);
-  salvarNuvem(function() {
+  excluirEvento(id, function() {
+    eventos = eventos.filter(function(e) { return e.id !== id; });
     setBusy(false);
     toast('Evento removido');
     renderEventos();
