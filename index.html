@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda — Sem K.O · Relo · Xepa</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0c0c0c; --surface: #141414; --surface2: #1c1c1c;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0; --muted: rgba(240,240,240,0.4); --accent: #c8993a;
+  }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  .bg-wallpaper { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg-wallpaper img { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: max(100vw,100vh); height: max(100vw,100vh); object-fit: contain; opacity: 0.055; filter: grayscale(100%) contrast(1.1); user-select: none; }
+  .bg-wallpaper::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 75% 75% at 50% 50%, transparent 15%, rgba(12,12,12,0.55) 65%, rgba(12,12,12,0.9) 100%); }
+
+  .loading-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity 0.4s; }
+  .loading-screen.oculto { opacity: 0; pointer-events: none; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-txt { font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+
+  header { position: relative; z-index: 10; border-bottom: 1px solid var(--border); background: rgba(12,12,12,0.94); backdrop-filter: blur(16px); }
+  .header-inner { max-width: 1200px; margin: 0 auto; padding: clamp(14px,2.5vw,22px) clamp(16px,4vw,36px); display: flex; align-items: center; gap: clamp(12px,2vw,20px); }
+  .logo-img { width: clamp(48px,7vw,64px); height: clamp(48px,7vw,64px); border-radius: 10px; object-fit: cover; border: 1px solid var(--border2); flex-shrink: 0; }
+  .header-info { flex: 1; min-width: 0; }
+  .header-name { font-family: 'DM Serif Display', serif; font-size: clamp(1rem,2.5vw,1.35rem); color: var(--text); letter-spacing: 0.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-sub { font-size: clamp(0.6rem,1.2vw,0.72rem); color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 3px; font-weight: 500; }
+  .header-accent-line { height: 1px; background: linear-gradient(90deg, var(--accent), transparent 60%); margin-top: 6px; width: clamp(60px,15vw,120px); }
+
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(12,12,12,0.97); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+  .nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px,4vw,36px); display: flex; }
+  .nav-btn { flex-shrink: 0; padding: clamp(12px,2vw,14px) clamp(14px,2.5vw,20px); font-size: clamp(0.7rem,1.5vw,0.78rem); font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.ativo { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: clamp(24px,4vw,48px) clamp(16px,4vw,36px) clamp(60px,8vw,96px); }
+  .view { display: none; }
+  .view.ativo { display: block; }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: clamp(24px,4vw,40px); flex-wrap: wrap; gap: 12px; }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: clamp(1.4rem,3.5vw,1.8rem); color: var(--text); font-weight: 400; line-height: 1.2; }
+  .page-title span { display: block; width: 36px; height: 2px; background: var(--accent); margin-top: 8px; border-radius: 2px; }
+
+  .btn { font-family: 'Inter', sans-serif; font-size: clamp(0.7rem,1.5vw,0.76rem); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .btn-add { padding: clamp(9px,1.5vw,11px) clamp(16px,2.5vw,22px); background: var(--accent); color: #0c0c0c; white-space: nowrap; }
+  .btn-add:hover { background: #d9aa50; }
+  .btn-add:active { transform: scale(0.97); }
+  .btn-add:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-ghost { padding: 7px 14px; background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+  .btn-ghost-danger { padding: 7px 14px; background: transparent; color: rgba(200,80,80,0.7); border: 1px solid rgba(200,80,80,0.25); }
+  .btn-ghost-danger:hover { color: #e05555; border-color: rgba(200,80,80,0.5); }
+
+  .grid { display: grid; gap: clamp(14px,2.5vw,22px); grid-template-columns: 1fr; }
+  @media(min-width:600px)  { .grid { grid-template-columns: repeat(2,1fr); } }
+  @media(min-width:960px)  { .grid { grid-template-columns: repeat(3,1fr); } }
+  @media(min-width:1280px) { .grid { grid-template-columns: repeat(4,1fr); } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; }
+  @media(hover:hover) { .card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); } }
+  .card-flyer { width: 100%; height: clamp(150px,20vw,200px); object-fit: cover; display: block; }
+  .card-no-flyer { width: 100%; height: clamp(100px,14vw,150px); background: var(--surface2); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
+  .card-no-flyer-text { font-size: 0.65rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.1); }
+  .card-body { padding: clamp(14px,2vw,20px); flex: 1; display: flex; flex-direction: column; }
+  .card-date { font-size: 0.68rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 7px; }
+  .card-title { font-family: 'DM Serif Display', serif; font-size: clamp(1.05rem,2vw,1.22rem); color: var(--text); line-height: 1.25; margin-bottom: 8px; font-weight: 400; }
+  .card-location { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+  .card-location svg { flex-shrink: 0; opacity: 0.6; }
+  .card-desc { font-size: 0.8rem; color: rgba(240,240,240,0.42); line-height: 1.6; margin-bottom: 16px; padding-left: 10px; border-left: 2px solid var(--surface2); flex: 1; }
+  .card-actions { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
+  .card-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  .empty { text-align: center; padding: clamp(60px,10vw,110px) 20px; }
+  .empty-title { font-family: 'DM Serif Display', serif; font-size: clamp(1.1rem,2.5vw,1.4rem); color: rgba(255,255,255,0.14); font-weight: 400; margin-bottom: 8px; }
+  .empty-sub { font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.08); }
+
+  .cal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; padding: clamp(14px,2vw,20px) clamp(16px,3vw,28px); border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .cal-mes-label { font-family: 'DM Serif Display', serif; font-size: clamp(1.1rem,2.5vw,1.3rem); color: var(--text); font-weight: 400; }
+  .cal-nav { background: transparent; border: 1px solid var(--border2); color: var(--muted); width: clamp(30px,5vw,36px); height: clamp(30px,5vw,36px); border-radius: 6px; font-size: clamp(0.9rem,2vw,1.05rem); cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .cal-nav:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+  .cal-body { padding: clamp(12px,2.5vw,22px) clamp(12px,3vw,26px); }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 6px; }
+  .cal-wd { text-align: center; font-size: clamp(0.55rem,1.2vw,0.66rem); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 4px 0; }
+  .cal-cells { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: clamp(4px,1vw,8px) 2px 3px; border-radius: 7px; border: 1px solid transparent; cursor: default; transition: all 0.15s; }
+  .cal-cell.outro { opacity: 0.2; }
+  .cal-cell.hoje { border-color: rgba(200,153,58,0.4); background: rgba(200,153,58,0.07); }
+  .cal-cell.com-evento { border-color: var(--border2); background: var(--surface2); cursor: pointer; }
+  .cal-cell.com-evento:hover { border-color: rgba(255,255,255,0.22); }
+  .cal-cell-num { font-size: clamp(0.68rem,1.5vw,0.84rem); font-weight: 500; color: rgba(240,240,240,0.55); line-height: 1; }
+  .cal-cell.hoje .cal-cell-num { color: var(--accent); font-weight: 700; }
+  .cal-cell.com-evento .cal-cell-num { color: var(--text); }
+  .cal-dot { width: clamp(3px,0.8vw,5px); height: clamp(3px,0.8vw,5px); border-radius: 50%; background: var(--accent); margin-top: 3px; }
+  .cal-events-section { margin-top: clamp(20px,3vw,34px); }
+  .cal-events-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .cal-ev-row { display: flex; align-items: flex-start; gap: clamp(12px,2vw,18px); padding: clamp(12px,1.8vw,16px) 0; border-bottom: 1px solid var(--border); }
+  .cal-ev-row:last-child { border-bottom: none; }
+  .cal-ev-date { min-width: clamp(44px,7vw,52px); text-align: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 4px; flex-shrink: 0; }
+  .cal-ev-day { font-family: 'DM Serif Display', serif; font-size: clamp(1.25rem,3vw,1.55rem); line-height: 1; color: var(--text); }
+  .cal-ev-mon { font-size: 0.58rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .cal-ev-info { flex: 1; min-width: 0; }
+  .cal-ev-name { font-weight: 600; font-size: clamp(0.88rem,1.8vw,0.96rem); color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-ev-meta { font-size: 0.74rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(10px); z-index: 1000; display: none; align-items: flex-end; justify-content: center; padding: 0; }
+  @media(min-width:600px) { .overlay { align-items: center; padding: 20px; } }
+  .overlay.aberto { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); width: 100%; max-width: 520px; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 18px 18px 0 0; animation: slideUp 0.3s cubic-bezier(.32,1.2,.64,1); }
+  @media(min-width:600px) { .modal { border-radius: 14px; max-height: 90vh; animation: fadeScale 0.28s cubic-bezier(.34,1.56,.64,1); } }
+  @keyframes slideUp   { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fadeScale { from { transform: translateY(20px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 10px auto 0; }
+  @media(min-width:600px) { .modal-handle { display: none; } }
+  .modal-head { padding: clamp(16px,2.5vw,22px) clamp(18px,3vw,26px) 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .modal-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: clamp(1.15rem,2.5vw,1.35rem); font-weight: 400; color: var(--text); }
+  .modal-close { background: none; border: 1px solid var(--border); color: var(--muted); width: 32px; height: 32px; border-radius: 6px; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+  .modal-close:hover { border-color: var(--border2); color: var(--text); }
+  .modal-body { padding: clamp(16px,3vw,24px) clamp(18px,3vw,26px); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width:380px) { .form-row { grid-template-columns: 1fr; } }
+  .fg { margin-bottom: 15px; }
+  .fg label { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .fg input, .fg textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: clamp(9px,1.5vw,11px) 13px; font-family: 'Inter', sans-serif; font-size: clamp(0.88rem,2vw,0.92rem); outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+  .fg input:focus, .fg textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,153,58,0.1); }
+  .fg textarea { resize: vertical; min-height: 80px; }
+  .upload-zone { border: 1px dashed var(--border2); border-radius: 8px; padding: clamp(18px,3vw,26px); text-align: center; cursor: pointer; background: var(--surface2); transition: all 0.2s; position: relative; }
+  .upload-zone:hover { border-color: rgba(255,255,255,0.22); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; border: none !important; padding: 0 !important; }
+  .upload-zone-text { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+  .upload-hint { font-size: 0.62rem; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.13); margin-top: 4px; }
+  .preview-img { width: 100%; max-height: 150px; object-fit: cover; border-radius: 6px; display: none; }
+  .upload-progress { margin-top: 10px; display: none; }
+  .upload-progress-bar { height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+  .upload-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.3s; }
+  .upload-progress-txt { font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; text-align: center; }
+  .modal-foot { padding: 12px clamp(18px,3vw,26px) clamp(18px,4vw,24px); display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border); }
+  @media(max-width:400px) { .modal-foot { flex-direction: column-reverse; } .modal-foot .btn { width: 100%; padding: 13px; text-align: center; } }
+
+  .toast { position: fixed; bottom: clamp(16px,3vw,24px); right: clamp(16px,3vw,24px); max-width: 320px; padding: 11px 16px; border-radius: 8px; font-size: 0.74rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; background: var(--surface); border: 1px solid var(--border2); color: var(--text); z-index: 3000; transform: translateY(60px); opacity: 0; transition: all 0.3s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+  .toast.on { transform: translateY(0); opacity: 1; }
+  @media(max-width:480px) { .toast { left: 16px; right: 16px; max-width: none; text-align: center; } }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-txt">Carregando agenda...</div>
+</div>
+
+<div class="bg-wallpaper">
+  <img src="./img/logo.jpeg" alt="">
+</div>
+
+<header>
+  <div class="header-inner">
+    <img class="logo-img" src="./img/logo.jpeg" alt="Logo">
+    <div class="header-info">
+      <div class="header-name">Sem K.O &middot; Relo &middot; Xepa</div>
+      <div class="header-sub">Agenda Oficial de Eventos</div>
+      <div class="header-accent-line"></div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <button class="nav-btn ativo" onclick="trocarView('eventos',this)">Eventos</button>
+    <button class="nav-btn" onclick="trocarView('calendario',this)">Calendário</button>
+  </div>
+</nav>
+
+<main>
+  <div id="view-eventos" class="view ativo">
+    <div class="page-header">
+      <div class="page-title">Próximos Eventos <span></span></div>
+      <button class="btn btn-add" id="btn-novo" onclick="abrirModal()">+ Novo Evento</button>
+    </div>
+    <div class="grid" id="grid-eventos"></div>
+    <div class="empty" id="empty" style="display:none">
+      <div class="empty-title">Nenhum evento cadastrado</div>
+      <div class="empty-sub">Clique em "Novo Evento" para começar</div>
+    </div>
+  </div>
+
+  <div id="view-calendario" class="view">
+    <div class="page-header">
+      <div class="page-title">Calendário <span></span></div>
+    </div>
+    <div class="cal-box">
+      <div class="cal-head">
+        <button class="cal-nav" onclick="mudaMes(-1)">&#8249;</button>
+        <div class="cal-mes-label" id="cal-label">—</div>
+        <button class="cal-nav" onclick="mudaMes(1)">&#8250;</button>
+      </div>
+      <div class="cal-body">
+        <div class="cal-weekdays">
+          <div class="cal-wd">Dom</div><div class="cal-wd">Seg</div><div class="cal-wd">Ter</div>
+          <div class="cal-wd">Qua</div><div class="cal-wd">Qui</div><div class="cal-wd">Sex</div><div class="cal-wd">Sáb</div>
+        </div>
+        <div class="cal-cells" id="cal-cells"></div>
+      </div>
+    </div>
+    <div class="cal-events-section" id="cal-lista"></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div>
+        <div class="modal-label">Sem K.O &middot; Relo &middot; Xepa</div>
+        <div class="modal-title" id="modal-titulo">Novo Evento</div>
+      </div>
+      <button class="modal-close" onclick="fechar()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Nome do Evento</label>
+        <input id="f-nome" type="text" placeholder="Ex: Torneio de Pipa — Zona Norte">
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Data</label><input id="f-data" type="date"></div>
+        <div class="fg"><label>Horário</label><input id="f-hora" type="time"></div>
+      </div>
+      <div class="fg">
+        <label>Local</label>
+        <input id="f-local" type="text" placeholder="Endereço ou nome do local">
+      </div>
+      <div class="fg">
+        <label>Descrição</label>
+        <textarea id="f-desc" placeholder="Informações, regras, detalhes do evento..."></textarea>
+      </div>
+      <div class="fg">
+        <label>Foto do Flyer</label>
+        <div class="upload-zone">
+          <input type="file" accept="image/*" id="f-flyer" onchange="selecionarFlyer(event)">
+          <div id="upload-placeholder">
+            <div class="upload-zone-text">Clique ou arraste o flyer aqui</div>
+            <div class="upload-hint">JPG &middot; PNG &middot; GIF</div>
+          </div>
+          <img id="f-preview" class="preview-img" alt="">
+          <div class="upload-progress" id="upload-progress">
+            <div class="upload-progress-bar"><div class="upload-progress-fill" id="progress-fill"></div></div>
+            <div class="upload-progress-txt" id="progress-txt">Enviando...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="fechar()">Cancelar</button>
+      <button class="btn btn-add" id="btn-salvar" onclick="salvar()">Salvar Evento</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var API_KEY  = '$2a$10$4gR/ag/haZzK9a9LX6GNfe24njmah5EFYVpbt0eFi0No9AyqZ3yua';
+var BIN_ID   = '6a1f1f74da38895dfe7d1aee';
+var BIN_URL  = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
+
+var CLD_NAME   = 'dgzqo3yve';
+var CLD_PRESET = 'agenda_pipa';
+var CLD_URL    = 'https://api.cloudinary.com/v1_1/' + CLD_NAME + '/image/upload';
+
+var eventos   = [];
+var editId    = null;
+var flyerUrl  = null;
+var uploading = false;
+var hoje      = new Date();
+var cAno      = hoje.getFullYear();
+var cMes      = hoje.getMonth();
+
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var MABR  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function fmt(d) { if (!d) return ''; var p = d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  setTimeout(function() { t.classList.remove('on'); }, 3000);
+}
+
+function setLoading(on) {
+  var el = document.getElementById('loading');
+  if (on) el.classList.remove('oculto');
+  else    el.classList.add('oculto');
+}
+
+function setBusy(on, txt) {
+  var bs = document.getElementById('btn-salvar');
+  var bn = document.getElementById('btn-novo');
+  bs.disabled = on;
+  bn.disabled = on;
+  bs.textContent = on ? (txt || 'Salvando...') : 'Salvar Evento';
+}
+
+// ── CARREGAR ──
+function carregar() {
+  setLoading(true);
+
+  // Timeout de segurança — libera a tela após 8s no matter what
+  var tid = setTimeout(function() {
+    setLoading(false);
+    toast('Sem resposta. Verifique sua conexão.');
+  }, 8000);
+
+  fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': API_KEY, 'X-Bin-Meta': 'false' } })
+    .then(function(r) {
+      clearTimeout(tid);
+      setLoading(false);
+      if (!r.ok) { toast('Erro ' + r.status + ' ao carregar.'); return null; }
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      eventos = (data.record && Array.isArray(data.record.eventos)) ? data.record.eventos : [];
+      renderEventos();
+    })
+    .catch(function() {
+      clearTimeout(tid);
+      setLoading(false);
+      toast('Erro de conexão. Recarregue a página.');
+    });
+}
+
+// ── SALVAR NA NUVEM ──
+function salvarNuvem(cb) {
+  var tid = setTimeout(function() {
+    setBusy(false);
+    toast('Timeout. Tente novamente.');
+  }, 12000);
+
+  fetch(BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+    body: JSON.stringify({ eventos: eventos })
+  })
+    .then(function(r) {
+      clearTimeout(tid);
+      if (!r.ok) { setBusy(false); toast('Erro ' + r.status + ' ao salvar.'); return null; }
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      if (cb) cb();
+    })
+    .catch(function() {
+      clearTimeout(tid);
+      setBusy(false);
+      toast('Erro ao salvar. Tente novamente.');
+    });
+}
+
+// ── UPLOAD CLOUDINARY ──
+function uploadFlyer(file, cb) {
+  uploading = true;
+  setBusy(true, 'Enviando imagem...');
+  var prog = document.getElementById('upload-progress');
+  var fill = document.getElementById('progress-fill');
+  var ptxt = document.getElementById('progress-txt');
+  prog.style.display = 'block';
+  fill.style.width = '0%';
+  ptxt.textContent = 'Enviando...';
+
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLD_PRESET);
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', CLD_URL, true);
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      var p = Math.round(e.loaded / e.total * 100);
+      fill.style.width = p + '%';
+      ptxt.textContent = 'Enviando ' + p + '%';
+    }
+  };
+  xhr.onload = function() {
+    uploading = false;
+    prog.style.display = 'none';
+    if (xhr.status === 200) {
+      var res = JSON.parse(xhr.responseText);
+      flyerUrl = res.secure_url;
+      setBusy(false);
+      cb(res.secure_url);
+    } else {
+      setBusy(false);
+      toast('Erro no upload da imagem.');
+    }
+  };
+  xhr.onerror = function() {
+    uploading = false;
+    prog.style.display = 'none';
+    setBusy(false);
+    toast('Falha no upload. Verifique o preset do Cloudinary.');
+  };
+  xhr.send(fd);
+}
+
+function selecionarFlyer(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = document.getElementById('f-preview');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('upload-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  flyerUrl = null;
+  uploadFlyer(file, function(url) {
+    flyerUrl = url;
+    toast('Imagem enviada!');
+  });
+}
+
+// ── VIEWS ──
+function trocarView(view, btn) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('ativo'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('ativo'); });
+  document.getElementById('view-' + view).classList.add('ativo');
+  btn.classList.add('ativo');
+  if (view === 'calendario') renderCal();
+}
+
+// ── RENDER EVENTOS ──
+function renderEventos() {
+  var grid  = document.getElementById('grid-eventos');
+  var empty = document.getElementById('empty');
+  var list  = eventos.slice().sort(function(a,b) { return (a.data||'').localeCompare(b.data||''); });
+
+  if (!list.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  grid.innerHTML = list.map(function(ev) {
+    var fh = ev.flyer
+      ? '<img class="card-flyer" src="' + ev.flyer + '" alt="Flyer">'
+      : '<div class="card-no-flyer"><span class="card-no-flyer-text">Sem flyer</span></div>';
+    var dh = ev.data ? '<div class="card-date">' + fmt(ev.data) + (ev.hora ? ' &middot; ' + ev.hora : '') + '</div>' : '';
+    var lh = ev.local ? '<div class="card-location"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' + ev.local + '</div>' : '';
+    var xh = ev.desc ? '<div class="card-divider"></div><div class="card-desc">' + ev.desc + '</div>' : '';
+    return '<div class="card">' + fh + '<div class="card-body">' + dh + '<div class="card-title">' + ev.nome + '</div>' + lh + xh
+      + '<div class="card-actions">'
+      + '<button class="btn btn-ghost" onclick="abrirModal(\'' + ev.id + '\')">Editar</button>'
+      + '<button class="btn btn-ghost-danger" onclick="excluir(\'' + ev.id + '\')">Excluir</button>'
+      + '</div></div></div>';
+  }).join('');
+}
+
+// ── MODAL ──
+function abrirModal(id) {
+  editId   = id || null;
+  flyerUrl = null;
+  ['f-nome','f-data','f-hora','f-local','f-desc'].forEach(function(k) { document.getElementById(k).value = ''; });
+  document.getElementById('f-preview').style.display = 'none';
+  document.getElementById('upload-placeholder').style.display = 'block';
+  document.getElementById('f-flyer').value = '';
+  document.getElementById('upload-progress').style.display = 'none';
+
+  if (editId) {
+    var ev = eventos.find(function(e) { return e.id === editId; });
+    if (ev) {
+      document.getElementById('modal-titulo').textContent = 'Editar Evento';
+      document.getElementById('f-nome').value  = ev.nome  || '';
+      document.getElementById('f-data').value  = ev.data  || '';
+      document.getElementById('f-hora').value  = ev.hora  || '';
+      document.getElementById('f-local').value = ev.local || '';
+      document.getElementById('f-desc').value  = ev.desc  || '';
+      if (ev.flyer) {
+        flyerUrl = ev.flyer;
+        var img = document.getElementById('f-preview');
+        img.src = ev.flyer;
+        img.style.display = 'block';
+        document.getElementById('upload-placeholder').style.display = 'none';
+      }
+    }
+  } else {
+    document.getElementById('modal-titulo').textContent = 'Novo Evento';
+  }
+
+  document.getElementById('overlay').classList.add('aberto');
+  document.body.style.overflow = 'hidden';
+}
+
+function fechar() {
+  if (uploading) { toast('Aguarde o upload.'); return; }
+  document.getElementById('overlay').classList.remove('aberto');
+  document.body.style.overflow = '';
+  editId = null; flyerUrl = null;
+}
+
+function overlayClick(e) { if (e.target === document.getElementById('overlay')) fechar(); }
+
+// ── SALVAR EVENTO ──
+function salvar() {
+  if (uploading) { toast('Aguarde o upload.'); return; }
+  var nome = document.getElementById('f-nome').value.trim();
+  if (!nome) { toast('Informe o nome do evento'); return; }
+
+  var ev = {
+    id:    editId || uid(),
+    nome:  nome,
+    data:  document.getElementById('f-data').value,
+    hora:  document.getElementById('f-hora').value,
+    local: document.getElementById('f-local').value.trim(),
+    desc:  document.getElementById('f-desc').value.trim(),
+    flyer: flyerUrl || null
+  };
+
+  if (editId) {
+    var i = eventos.findIndex(function(e) { return e.id === editId; });
+    if (i !== -1) eventos[i] = ev; else eventos.push(ev);
+  } else {
+    eventos.push(ev);
+  }
+
+  var wasEdit = !!editId;
+  setBusy(true);
+  salvarNuvem(function() {
+    setBusy(false);
+    toast(wasEdit ? 'Evento atualizado!' : 'Evento adicionado!');
+    renderEventos();
+    fechar();
+  });
+}
+
+function excluir(id) {
+  if (!confirm('Excluir este evento?')) return;
+  eventos = eventos.filter(function(e) { return e.id !== id; });
+  setBusy(true);
+  salvarNuvem(function() {
+    setBusy(false);
+    toast('Evento removido');
+    renderEventos();
+  });
+}
+
+// ── CALENDÁRIO ──
+function mudaMes(d) {
+  cMes += d;
+  if (cMes < 0)  { cMes = 11; cAno--; }
+  if (cMes > 11) { cMes = 0;  cAno++; }
+  renderCal();
+}
+
+function renderCal() {
+  document.getElementById('cal-label').textContent = MESES[cMes] + ' ' + cAno;
+  var prim = new Date(cAno, cMes, 1).getDay();
+  var dias = new Date(cAno, cMes + 1, 0).getDate();
+  var ant  = new Date(cAno, cMes, 0).getDate();
+  var hStr = hoje.toISOString().slice(0,10);
+  var h = '';
+
+  for (var i = prim - 1; i >= 0; i--)
+    h += '<div class="cal-cell outro"><span class="cal-cell-num">' + (ant-i) + '</span></div>';
+
+  for (var d = 1; d <= dias; d++) {
+    var str = cAno + '-' + String(cMes+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var evs = eventos.filter(function(e) { return e.data === str; });
+    var cls = 'cal-cell' + (str === hStr ? ' hoje' : '') + (evs.length ? ' com-evento' : '');
+    h += '<div class="' + cls + '" title="' + evs.map(function(e) { return e.nome; }).join(', ') + '">'
+      + '<span class="cal-cell-num">' + d + '</span>'
+      + (evs.length ? '<div class="cal-dot"></div>' : '')
+      + '</div>';
+  }
+
+  var rest = (prim + dias) % 7;
+  if (rest) for (var d2 = 1; d2 <= 7 - rest; d2++)
+    h += '<div class="cal-cell outro"><span class="cal-cell-num">' + d2 + '</span></div>';
+
+  document.getElementById('cal-cells').innerHTML = h;
+
+  var pfx   = cAno + '-' + String(cMes+1).padStart(2,'0');
+  var lista = eventos.filter(function(e) { return e.data && e.data.startsWith(pfx); })
+                     .sort(function(a,b) { return a.data.localeCompare(b.data); });
+  var el    = document.getElementById('cal-lista');
+
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty" style="padding:44px 20px"><div class="empty-title">Sem eventos neste mês</div></div>';
+    return;
+  }
+
+  var lh = '<div class="cal-events-title">Eventos do Mês</div>';
+  lista.forEach(function(ev) {
+    var p = ev.data.split('-');
+    lh += '<div class="cal-ev-row">'
+      + '<div class="cal-ev-date"><div class="cal-ev-day">' + p[2] + '</div><div class="cal-ev-mon">' + MABR[parseInt(p[1],10)-1] + '</div></div>'
+      + '<div class="cal-ev-info"><div class="cal-ev-name">' + ev.nome + '</div><div class="cal-ev-meta">'
+      + (ev.hora  ? '<span>' + ev.hora  + '</span>' : '')
+      + (ev.local ? '<span>' + ev.local + '</span>' : '')
+      + '</div></div></div>';
+  });
+  el.innerHTML = lh;
+}
+
+// ── INIT ──
+carregar();
+</script>
+</body>
+</html>
